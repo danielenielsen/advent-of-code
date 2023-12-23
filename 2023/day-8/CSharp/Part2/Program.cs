@@ -1,6 +1,8 @@
 ﻿using Sprache;
+using System.Numerics;
+using System.Runtime.InteropServices;
 
-namespace Part1
+namespace Part2
 {
     internal class Program
     {
@@ -10,24 +12,55 @@ namespace Part1
             string input = File.ReadAllText(path);
             DirectionInformation directionInformation = InputParser.ParseInput(input);
             Dictionary<(string, Direction), string> locationDict = GetLocationDictionary(directionInformation.Nodes);
-            string start = "AAA";
-            string end = "ZZZ";
+            List<string> start = directionInformation.Nodes.Where(x => x.Item1[2] == 'A').Select(x => x.Item1).ToList();
 
-            string current = start;
-            long steps = 0;
-            foreach (Direction direction in GetInfiniteDirectionIterator(directionInformation.Directions))
+            List<long> startValueLoopLengths = new List<long>();
+            
+            foreach (string val in start)
             {
-                if (current == end)
+                string current = val;
+                long steps = 0;
+                foreach (Direction direction in GetInfiniteDirectionIterator(directionInformation.Directions))
                 {
-                    break;
+                    if (current[2] == 'Z')
+                    {
+                        startValueLoopLengths.Add(steps);
+                        break;
+                    }
+
+                    steps++;
+
+                    current = locationDict[(current, direction)];
                 }
-
-                steps++;
-
-                current = locationDict[(current, direction)];
             }
 
-            Console.WriteLine(steps);
+            long result = FindLCM(startValueLoopLengths);
+        }
+
+        static long FindLCM(List<long> numbers)
+        {
+            long lcm = numbers[0];
+            for (int i = 1; i < numbers.Count; i++)
+            {
+                lcm = LCM(lcm, numbers[i]);
+            }
+            return lcm;
+        }
+
+        static long GCD(long a, long b)
+        {
+            while (b != 0)
+            {
+                long temp = b;
+                b = a % b;
+                a = temp;
+            }
+            return a;
+        }
+
+        static long LCM(long a, long b)
+        {
+            return a / GCD(a, b) * b;
         }
 
         public static IEnumerable<Direction> GetInfiniteDirectionIterator(List<Direction> directions)
