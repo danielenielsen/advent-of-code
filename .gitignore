@@ -400,3 +400,6 @@ FodyWeavers.xsd
 # RustRover
 .idea/
 target/
+
+# OCaml
+_build/
