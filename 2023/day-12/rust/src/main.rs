@@ -39,7 +39,7 @@ struct Spring {
 
 fn main() -> Result<(), String> {
     let start = std::time::Instant::now();
-    let file_name = "../input2.txt";
+    let file_name = "../input.txt";
     let file_contents = read_input_file(file_name)?;
     let springs = parse_input(&file_contents)?;
     println!("Reading and parsing done in {:#?}", start.elapsed());
@@ -60,18 +60,18 @@ fn main() -> Result<(), String> {
 }
 
 fn part_one(springs: &[Spring]) -> Result<i64, String> {
-
-    let mut res = 0;
-
-    for spring in springs {
-        res += brute_force(&spring);
-    }
-
+    let res: i64 = springs.iter().map(|spring| find_spring_combinations(spring)).sum();
     Ok(res)
 }
 
 fn part_two(springs: &[Spring]) -> Result<i64, String> {
-    Ok(0)
+    let springs: Vec<_> = springs.iter().map(|spring| Spring {
+        springs: repeat_with_delimiter(&spring.springs, &SpringType::Unknown, 5),
+        records: spring.records.repeat(5)
+    }).collect();
+
+    let res: i64 = springs.iter().map(|spring| find_spring_combinations(spring)).sum();
+    Ok(res)
 }
 
 fn brute_force(spring: &Spring) -> i64 {
@@ -173,6 +173,7 @@ fn brute_force(spring: &Spring) -> i64 {
 
     loop {
         if is_valid_placement(damaged_spring_bits, operational_spring_bits, current) {
+            println!("Correct: {current:b}");
             count += 1;
         }
 
@@ -184,8 +185,126 @@ fn brute_force(spring: &Spring) -> i64 {
     count
 }
 
-fn solve(springs: &Spring) -> i64 {
-    0
+fn find_spring_combinations(spring: &Spring) -> i64 { 
+    fn make_string_from_groups(offset: i64, group_sizes: &[i64], group_positions: &[i64]) -> String {
+        let mut str = "".to_string();
+
+        for i in 0..group_sizes.len() {
+            let size = group_sizes[i];
+            let position = group_positions[i] + offset;
+
+            str.push_str(format!("{size};{position},").as_str());
+        }
+
+        str
+    }
+    
+    fn check_validity(springs: &[SpringType], group_sizes: &[i64], group_positions: &[i64]) -> bool {
+        assert_eq!(group_sizes.len(), group_positions.len());
+
+        let mut damaged_positions_covered: Vec<usize> = springs.iter().enumerate().filter(|(_, &x)| x == SpringType::Damaged).map(|(idx, _)| idx).collect();
+        
+        for i in 0..group_sizes.len() {
+            let position = group_positions[i];
+            let size = group_sizes[i];
+            
+            for j in 0..size {
+                let cursor = (position + j) as usize;
+                if springs[cursor] == SpringType::Operational {
+                    return false;
+                }
+
+                if damaged_positions_covered.contains(&cursor) {
+                    let idx = damaged_positions_covered.iter().position(|x| *x == cursor).unwrap();
+                    damaged_positions_covered.swap_remove(idx);
+                }
+            }
+        }
+
+        if damaged_positions_covered.len() > 0 {
+            return false;
+        }
+
+        true
+    }
+
+    fn recursive_check(springs: &[SpringType], offset: i64, group_sizes: &[i64], group_positions: &[i64], solutions_map: &mut HashMap<String, i64>) -> i64 {
+        assert_eq!(group_sizes.len(), group_positions.len());
+        assert!(offset >= 0);
+
+        if springs[0] == SpringType::Damaged && group_positions[0] > 0 {
+            return 0;
+        }
+
+        let hash_str = make_string_from_groups(offset, &group_sizes, &group_positions);
+
+        if solutions_map.contains_key(&hash_str) {
+            let res = *solutions_map.get(&hash_str).unwrap();
+            return res;
+        }
+
+        let mut sum = 0;
+
+        if group_sizes.len() > 1 {
+            let spring_separator = (group_positions.get(0).unwrap() + group_sizes.get(0).unwrap() + 1) as usize;
+            let first_part = &springs[..spring_separator];
+            let second_part = &springs[spring_separator..];
+
+            if check_validity(&first_part, &group_sizes[..1], &group_positions[..1]) {
+                let new_positions: Vec<_> = group_positions[1..].iter().map(|x| x - spring_separator as i64).collect();
+                let sub_problem_res = recursive_check(second_part, offset + spring_separator as i64, &group_sizes[1..], &new_positions, solutions_map);
+                sum += sub_problem_res;
+            }
+        }
+
+        if group_sizes.len() == 1 && group_positions[0] + group_sizes[0] == springs.len() as i64 {
+            if check_validity(springs, group_sizes, group_positions) {
+                return 1;
+            }
+        }
+
+        let incremented_positions: Vec<_> = group_positions.iter().map(|x| x + 1).collect();
+        let last_position = incremented_positions[incremented_positions.len() - 1];
+        let last_size = group_sizes[group_sizes.len() - 1];
+
+
+        if last_position + last_size < springs.len() as i64 + 1 {
+            let first_position = group_positions[0];
+            let (new_springs, offset_delta) = if first_position == 0 {
+                (springs, 0)
+            } else {
+                (&springs[1..], 1)
+            };
+            let new_positions = if offset_delta == 1 {
+                group_positions
+            } else {
+                &incremented_positions
+            };
+
+            let sub_problem_res = recursive_check(new_springs, offset + offset_delta, group_sizes, new_positions, solutions_map);
+            sum += sub_problem_res;
+
+            if group_sizes.len() == 1 && check_validity(springs, group_sizes, group_positions) {
+                sum += 1;
+            }
+        }
+
+        solutions_map.insert(hash_str, sum);
+
+        sum
+    }
+
+
+    let group_sizes: Vec<i64> = spring.records.clone();
+    let mut group_positions: Vec<i64> = Vec::new();
+
+    let mut current = 0;
+    for item in &group_sizes {
+        group_positions.push(current);
+        current += item + 1;
+    }
+
+    recursive_check(&spring.springs, 0, &group_sizes, &group_positions, &mut HashMap::new())
 }
 
 fn repeat_with_delimiter<T: Clone>(vec: &[T], delimiter: &T, times: usize) -> Vec<T> {
