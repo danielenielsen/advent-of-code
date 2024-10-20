@@ -14,7 +14,6 @@ pub fn main() !void {
     try stdout.print("Read {d} bytes\n", .{ bytes_read });
 
     const string = buf[0..bytes_read];
-    // try stdout.print("{s}", .{ string });
 
     var level: i32 = 0;
     for (string) |char| {
