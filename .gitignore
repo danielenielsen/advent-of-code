@@ -405,7 +405,7 @@ target/
 _build/
 
 # Zig
-zig-cache/
+.zig-cache/
 zig-out/
 /release/
 /debug/
