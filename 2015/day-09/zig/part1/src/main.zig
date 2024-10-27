@@ -22,10 +22,6 @@ pub fn main() !void {
         }
     }
 
-    for (destinations.items) |item| {
-        std.debug.print("{s}\n", .{ item });
-    }
-
     const numberOfPlaces = destinations.items.len;
 
     const matrix = try allocator.alloc(i32, numberOfPlaces * numberOfPlaces);
@@ -47,15 +43,6 @@ pub fn main() !void {
 
         setMatrixValue(matrix, numberOfPlaces, fromId, toId, lineData.distance);
         setMatrixValue(matrix, numberOfPlaces, toId, fromId, lineData.distance);
-    }
-
-    for (0..numberOfPlaces) |i| {
-        for (0..numberOfPlaces) |j| {
-            std.debug.print("{d}\t", .{
-                getMatrixValue(matrix, numberOfPlaces, i, j)
-            });
-        }
-        std.debug.print("\n", .{});
     }
 
     var route = try allocator.alloc(usize, numberOfPlaces);
