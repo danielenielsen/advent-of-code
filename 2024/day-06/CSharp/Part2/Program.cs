@@ -1,6 +1,4 @@
-﻿using System.Transactions;
-
-namespace Part1
+﻿namespace Part1
 {
     internal class Program
     {
@@ -69,7 +67,19 @@ namespace Part1
         public int GuardY = -1;
         public Direction GuardFacing = Direction.North;
 
-        private IEnumerable<(int x, int y, Direction dir, Space space)> IterWalk()
+        public void Reset()
+        {
+            GuardX = GuardStartX;
+            GuardY = GuardStartY;
+            GuardFacing = Direction.North;
+
+            foreach ((int _, int _, Space space) in Iter())
+            {
+                space.VisitedDirections.Clear();
+            }
+        }
+
+        private bool Walk()
         {
             while (true)
             {
@@ -77,15 +87,17 @@ namespace Part1
 
                 if (newX < 0 || newX >= Width || newY < 0 || newY >= Height)
                 {
-                    break;
+                    return true;
                 }
 
-                Space newSpace = Spaces[newX, newY];
-
-                switch (newSpace.Type)
+                Space space = Spaces[newX, newY];
+                switch (space.Type)
                 {
                     case SpaceType.Empty:
-                        yield return (GuardX, GuardY, GuardFacing, Spaces[GuardX, GuardY]);
+                        if (space.VisitedDirections.Contains(GuardFacing))
+                        {
+                            return false;
+                        }
 
                         GuardX = newX;
                         GuardY = newY;
@@ -98,77 +110,40 @@ namespace Part1
                 Space guardSpace = Spaces[GuardX, GuardY];
                 guardSpace.VisitedDirections.Add(GuardFacing);
             }
+        }
 
-            yield break;
+        private IEnumerable<(int x, int y, Space space)> Iter()
+        {
+            for (int i = 0; i < Width; i++)
+            {
+                for (int j = 0; j < Height; j++)
+                {
+                    yield return (i, j, Spaces[i, j]);
+                }
+            }
         }
 
         public int CountPossibleLoops()
         {
             int count = 0;
 
-            foreach ((int x, int y, Direction dir, Space space) in IterWalk())
+            foreach ((int x, int y, Space space) in Iter())
             {
-                Direction rightDirection = GetRightDirection(dir);
-                List<Space> emptySpaces = GetEmptySpacesToTheRight(x, y, dir);
-
-                if (emptySpaces.Any(x => x.VisitedDirections.Contains(rightDirection)))
+                if (space.Type == SpaceType.Empty)
                 {
-                    if (x + 1 == GuardStartX && y + 1 == GuardStartY)
+                    space.Type = SpaceType.Obstacle;
+
+                    if (!Walk())
                     {
-                        continue;
+                        count++;
                     }
 
-                    count++;
+                    Reset();
+                    space.Type = SpaceType.Empty;
                 }
             }
 
             return count;
-        }
-
-        private List<Space> GetEmptySpacesToTheRight(int x, int y, Direction dir)
-        {
-            List<Space> result = new List<Space>();
-
-            int newX = x;
-            int newY = y;
-            while (true)
-            {
-                switch (dir)
-                {
-                    case Direction.North:
-                        newX++;
-                        break;
-                    case Direction.South:
-                        newX--;
-                        break;
-                    case Direction.East:
-                        newY++;
-                        break;
-                    case Direction.West:
-                        newY--;
-                        break;
-                    default:
-                        throw new Exception($"Unhandled direction '{dir}'.");
-                }
-
-                if (newX < 0 || newY < 0 || newX >= Width || newY >= Height)
-                {
-                    break;
-                }
-
-                Space space = Spaces[newX, newY];
-
-                if (space.Type == SpaceType.Empty)
-                {
-                    result.Add(space);
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            return result;
         }
 
         private (int x, int y) GetCoordsBasedOnDirection()
@@ -252,7 +227,7 @@ namespace Part1
     class Space(SpaceType type)
     {
         public SpaceType Type = type;
-        public List<Direction> VisitedDirections = new List<Direction>();
+        public List<Direction> VisitedDirections = new();
     }
 
     enum SpaceType
