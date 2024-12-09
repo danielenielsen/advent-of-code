@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices;
-
-namespace Part2
+﻿namespace Part2
 {
     internal class Program
     {
@@ -56,42 +54,59 @@ namespace Part2
             return new DiskMap(items);
         }
 
-        private static int CountEmptySpacesAt(FileSystemItem?[] items, int idx)
+        private static int FindMatchingEmptySpace(FileSystemItem?[] items, int length, int stopIdx)
         {
-            if (idx >= items.Length)
-            {
-                throw new ArgumentOutOfRangeException(nameof(idx));
-            }
-
+            int i = 0;
             int count = 0;
-            while (idx < items.Length && items[idx] == null)
+            while (i < stopIdx)
             {
-                count++;
-                idx++;
-            }
-
-            return count;
-        }
-
-        private static (int idx, int count) FindMatchingFile(FileSystemItem?[] items, int idx, int length)
-        {
-            int count = 0;
-            for (int i = items.Length - 1; i > idx; i--)
-            {
-                if (items[i] == null)
+                if (items[i] != null)
                 {
-                    if (count >= length)
-                    {
-                        return (i + 1, count);
-                    }
-
                     count = 0;
+                    i++;
+                    continue;
                 }
 
                 count++;
+
+                if (count == length)
+                {
+                    return i - count + 1;
+                }
+
+                i++;
             }
 
-            return (-1, -1);
+            return -1;
+        }
+
+        private static (int idx, int count) FindFileFromEnd(FileSystemItem?[] items, int startIdx)
+        {
+            int i = startIdx;
+            while (i >= 0 && items[i] == null)
+            {
+                i--;
+            }
+            
+            if (i < 0)
+            {
+                return (-1, -1);
+            }
+
+            int id = items[i]!.ID;
+            int count = 0;
+            while (i >= 0 && items[i] != null && items[i]!.ID == id)
+            {
+                count++;
+                i--;
+            }
+
+            if (i < 0)
+            {
+                return (-1, -1);
+            }
+
+            return (i + 1, count);
         }
 
         private static void SwapSpots(FileSystemItem?[] items, int startIdx1, int startIdx2, int length)
@@ -111,21 +126,31 @@ namespace Part2
         {
             FileSystemItem?[] items = Items.ToArray();
 
-            for (int i = 0; i < items.Length; i++)
+            int i = items.Length - 1;
+            while (true)
             {
-                int emptyCount = CountEmptySpacesAt(items, i);
-                if (emptyCount == 0)
+                if (i < 0)
                 {
+                    break;
+                }
+
+                (int idx, int count) file = FindFileFromEnd(items, i);
+
+                if (file.idx < 0)
+                {
+                    break;
+                }
+
+                int emptySpotsIdx = FindMatchingEmptySpace(items, file.count, file.idx);
+
+                if (emptySpotsIdx < 0)
+                {
+                    i = file.idx - 1;
                     continue;
                 }
 
-                (int idx, int count) matchingFile = FindMatchingFile(items, i, emptyCount);
-                if (matchingFile.idx == -1)
-                {
-                    continue;
-                }
-
-                SwapSpots(items, i, matchingFile.idx, matchingFile.count);
+                SwapSpots(items, file.idx, emptySpotsIdx, file.count);
+                i = file.idx - 1;
             }
 
             return items.ToList();
@@ -140,12 +165,10 @@ namespace Part2
             {
                 FileSystemItem? item = compactedItems[i];
 
-                if (item == null)
+                if (item != null)
                 {
-                    break;
+                    checksum += i * item.ID;
                 }
-
-                checksum += i * item.ID;
             }
 
             return checksum;
