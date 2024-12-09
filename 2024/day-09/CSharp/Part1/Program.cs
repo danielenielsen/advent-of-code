@@ -1,9 +1,4 @@
-﻿using System.ComponentModel;
-using System.Drawing;
-using System.Text;
-using System.Web;
-
-namespace Part1
+﻿namespace Part1
 {
     internal class Program
     {
@@ -13,7 +8,7 @@ namespace Part1
             string input = System.IO.File.ReadAllText(path).Replace("\r", "").Trim();
             DiskMap diskMap = DiskMap.ParseInput(input);
 
-            int checksum = diskMap.GetChecksum();
+            long checksum = diskMap.GetChecksum();
             Console.WriteLine($"Checksum: {checksum}");
         }
     }
@@ -102,11 +97,11 @@ namespace Part1
             return items.ToList();
         }
 
-        public int GetChecksum()
+        public long GetChecksum()
         {
             List<FileSystemItem?> compactedItems = CompactFileSystem();
 
-            int checksum = 0;
+            long checksum = 0;
             for (int i = 0; i < compactedItems.Count; i++)
             {
                 FileSystemItem? item = compactedItems[i];
