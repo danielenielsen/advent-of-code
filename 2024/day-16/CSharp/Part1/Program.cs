@@ -1,4 +1,6 @@
-﻿namespace Part1
+﻿using System.Security.Cryptography.X509Certificates;
+
+namespace Part1
 {
     internal class Program
     {
@@ -8,6 +10,9 @@
             string input = File.ReadAllText(path).Replace("\r", "").Trim();
             Board board = Board.ParseInput(input);
             board.Print();
+
+            int result = board.GetShortestPathCost();
+            Console.WriteLine($"Shortest path cost: {result}");
         }
     }
 
@@ -27,6 +32,118 @@
             Tiles = tiles;
             Start = start;
             End = end;
+        }
+
+        public int GetShortestPathCost()
+        {
+            PopulateDistances();
+
+            return Tiles[End.x, End.y].Distance;
+        }
+
+        private void PopulateDistances()
+        {
+            Tile start = Tiles[Start.x, Start.y];
+            start.Distance = 0;
+            List<(int x, int y, Tile tile, Direction lastMoved)> queue = [(Start.x, Start.y, start, Direction.Right)];
+
+            while (queue.Count > 0)
+            {
+                (int x, int y, Tile tile, Direction lastMoved) = queue[0];
+                queue.RemoveAt(0);
+
+                foreach ((int nx, int ny, Tile neighborTile, Direction direction) in GetNeighbors(x, y))
+                {
+                    if (neighborTile.Type == TileType.Wall)
+                    {
+                        continue;
+                    }
+
+                    // PROBLEM: At the X the two routes meet, but the right route uses the cost of the left route causing the result to be incorrect
+                    //######
+                    //###E##
+                    //#..X##
+                    //#.#.##
+                    //#...##
+                    //#S####
+                    //######
+
+                    //if (queue.Any((a, b, tile, dir) => a == nx && b == ny))
+                    //{
+
+                    //}
+
+                    int cost = tile.Distance + 1 + GetTurningCost(lastMoved, direction);
+                    if (cost < neighborTile.Distance)
+                    {
+                        neighborTile.Distance = cost;
+                        queue.Add((nx, ny, neighborTile, direction));
+                    }
+                }
+            }
+
+            Tile end = Tiles[End.x, End.y];
+            if (end.Distance == int.MaxValue)
+            {
+                throw new Exception("No path found.");
+            }
+        }
+
+        private IEnumerable<(int x, int y, Tile tile, Direction lastMoved)> GetNeighbors(int x, int y)
+        {
+            if (x > 0)
+            {
+                yield return (x - 1, y, Tiles[x - 1, y], Direction.Left);
+            }
+
+            if (x < Width - 1)
+            {
+                yield return (x + 1, y, Tiles[x + 1, y], Direction.Right);
+            }
+
+            if (y > 0)
+            {
+                yield return (x, y - 1, Tiles[x, y - 1], Direction.Up);
+            }
+
+            if (y < Height - 1)
+            {
+                yield return (x, y + 1, Tiles[x, y + 1], Direction.Down);
+            }
+        }
+
+        private static int GetTurningCost(Direction current, Direction towards)
+        {
+            int count = 0;
+            while (current != towards)
+            {
+                current = TurnCounterClockwise(current);
+                count++;
+            }
+
+            if (count > 3)
+            {
+                throw new Exception("Can turn a maximum of 3 times.");
+            }
+
+            return count * 1000;
+        }
+
+        private static Direction TurnCounterClockwise(Direction direction)
+        {
+            switch (direction)
+            {
+                case Direction.Up:
+                    return Direction.Left;
+                case Direction.Down:
+                    return Direction.Right;
+                case Direction.Right:
+                    return Direction.Up;
+                case Direction.Left:
+                    return Direction.Down;
+                default:
+                    throw new Exception("Unknown direction.");
+            }
         }
 
         public static Board ParseInput(string input)
@@ -125,6 +242,8 @@
     class Tile(TileType type)
     {
         public TileType Type = type;
+        public int Distance = int.MaxValue;
+        public bool PartOfPath = false;
     }
 
     enum TileType
