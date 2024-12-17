@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
-
-namespace Part1
+﻿namespace Part1
 {
     internal class Program
     {
@@ -9,7 +7,6 @@ namespace Part1
             string path = "../../../../../input.txt";
             string input = File.ReadAllText(path).Replace("\r", "").Trim();
             Board board = Board.ParseInput(input);
-            board.Print();
 
             int result = board.GetShortestPathCost();
             Console.WriteLine($"Shortest path cost: {result}");
@@ -45,12 +42,17 @@ namespace Part1
         {
             Tile start = Tiles[Start.x, Start.y];
             start.Distance = 0;
-            List<(int x, int y, Tile tile, Direction lastMoved)> queue = [(Start.x, Start.y, start, Direction.Right)];
+            List<(int x, int y, Tile tile, Direction lastMoved, int givenCost)> queue = [(Start.x, Start.y, start, Direction.Right, 0)];
 
             while (queue.Count > 0)
             {
-                (int x, int y, Tile tile, Direction lastMoved) = queue[0];
+                (int x, int y, Tile tile, Direction lastMoved, int givenCost) = queue[0];
                 queue.RemoveAt(0);
+
+                if (tile.Distance < givenCost)
+                {
+                    continue;
+                }
 
                 foreach ((int nx, int ny, Tile neighborTile, Direction direction) in GetNeighbors(x, y))
                 {
@@ -59,25 +61,11 @@ namespace Part1
                         continue;
                     }
 
-                    // PROBLEM: At the X the two routes meet, but the right route uses the cost of the left route causing the result to be incorrect
-                    //######
-                    //###E##
-                    //#..X##
-                    //#.#.##
-                    //#...##
-                    //#S####
-                    //######
-
-                    //if (queue.Any((a, b, tile, dir) => a == nx && b == ny))
-                    //{
-
-                    //}
-
                     int cost = tile.Distance + 1 + GetTurningCost(lastMoved, direction);
                     if (cost < neighborTile.Distance)
                     {
                         neighborTile.Distance = cost;
-                        queue.Add((nx, ny, neighborTile, direction));
+                        queue.Add((nx, ny, neighborTile, direction, cost));
                     }
                 }
             }
@@ -124,6 +112,11 @@ namespace Part1
             if (count > 3)
             {
                 throw new Exception("Can turn a maximum of 3 times.");
+            }
+
+            if (count == 3)
+            {
+                count = 1;
             }
 
             return count * 1000;
@@ -243,7 +236,6 @@ namespace Part1
     {
         public TileType Type = type;
         public int Distance = int.MaxValue;
-        public bool PartOfPath = false;
     }
 
     enum TileType
