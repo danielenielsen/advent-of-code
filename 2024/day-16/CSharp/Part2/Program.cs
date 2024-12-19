@@ -37,43 +37,58 @@
         {
             PopulateDistances();
 
-            List<(int x, int y, Tile tile)> current = [(End.x, End.y, Tiles[End.x, End.y])];
+            List<(int x, int y, Tile tile, Direction dir)> current = [(End.x, End.y, Tiles[End.x, End.y], EndDirection)];
 
-            int lastMinimumDistance = int.MaxValue;
 
             while (current.Count > 0)
             {
-                List<(int x, int y, Tile tile)> next = [];
+                List<(int x, int y, Tile tile, Direction dir)> next = [];
 
-                Console.Clear();
-                Print();
+                //Console.Clear();
+                //Print();
 
-                int minimumNeighborDistance = current.SelectMany(c => GetNeighbors(c.x, c.y)).Select(x => x.tile.Distance).Min();
+                //int minimumNeighborDistance = current.SelectMany(c => GetNeighbors(c.x, c.y)).Select(x => x.tile.Distance).Min();
 
-                if (lastMinimumDistance < minimumNeighborDistance)
+                foreach ((int x, int y, Tile tile, Direction dir) in current)
                 {
-                    break;
-                }
+                    if (tile.PartOfPath)
+                    {
+                        continue;
+                    }
 
-                foreach ((int x, int y, Tile tile) in current)
-                {
                     tile.PartOfPath = true;
 
-                    foreach ((int nx, int ny, Tile neighborTile, Direction dir) in GetNeighbors(x, y))
+                    foreach ((int nx, int ny, Tile neighborTile, Direction _) in GetNeighbors(x, y))
                     {
-                        if (!neighborTile.PartOfPath && neighborTile.Distance == minimumNeighborDistance)
+                        if (neighborTile.Distance == minimumNeighborDistance)
                         {
                             next.Add((nx, ny, neighborTile));
                         }
                     }
                 }
 
-                lastMinimumDistance = minimumNeighborDistance;
                 current = next;
             }
 
             int partOfPathCount = Iter().Count(x => x.tile.PartOfPath);
             return partOfPathCount;
+        }
+
+        private static IEnumerable<(Tile tile, Direction dir)> GetDiagonalBackwardsTiles(Direction direction)
+        {
+
+        }
+
+        private static Direction GetOppositeDirection(Direction direction)
+        {
+            return direction switch
+            {
+                Direction.Up => Direction.Down,
+                Direction.Down => Direction.Up,
+                Direction.Left => Direction.Right,
+                Direction.Right => Direction.Left,
+                _ => throw new Exception("Unknown direction."),
+            };
         }
 
         private void PopulateDistances()
