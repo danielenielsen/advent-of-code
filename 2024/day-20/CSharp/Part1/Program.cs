@@ -29,6 +29,28 @@
             _endPos = endPos;
         }
 
+        private void ValidatePathfinding()
+        {
+            foreach (Tile tile in Iter())
+            {
+                if (tile.Type == TileType.Empty && tile.Distance == int.MaxValue)
+                {
+                    throw new Exception("Not all empty tiles have been visited.");
+                }
+            }
+        }
+
+        private IEnumerable<Tile> Iter()
+        {
+            for (int y = 0; y < _height; y++)
+            {
+                for (int x = 0; x < _width; x++)
+                {
+                    yield return _tiles[x, y];
+                }
+            }
+        }
+
         public static Board ParseInput(string input)
         {
             string[] lines = input.Split("\n");
@@ -63,7 +85,7 @@
                         endPos = (x, y);
                     }
 
-                    tiles[x, y] = new Tile(type);
+                    tiles[x, y] = new Tile(x, y, type);
                 }
             }
 
@@ -116,10 +138,13 @@
         }
     }
 
-    class Tile(TileType type)
+    class Tile(int x, int y, TileType type)
     {
+        public int X = x;
+        public int Y = y;
+
         public TileType Type = type;
-        public int Distance;
+        public int Distance = int.MaxValue;
     }
 
     enum TileType
