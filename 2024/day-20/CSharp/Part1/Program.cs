@@ -7,7 +7,9 @@
             string path = "../../../../../input.txt";
             string input = File.ReadAllText(path).Replace("\r", "").Trim();
             Board board = Board.ParseInput(input);
-            board.Print();
+
+            int result = board.FindCheats();
+            Console.WriteLine($"Result: {result}");
         }
     }
 
@@ -27,6 +29,97 @@
             _tiles = tiles;
             _startPos = startPos;
             _endPos = endPos;
+        }
+
+        public int FindCheats()
+        {
+            PopulatePaths();
+            ValidatePathfinding();
+
+            int count = 0;
+            foreach (Tile tile in Iter())
+            {
+                if (tile.Type == TileType.Empty)
+                {
+                    continue;
+                }
+
+                List<int> distances = GetNeighbors(tile)
+                    .Where(x => x.Type == TileType.Empty)
+                    .Select(x => x.Distance)
+                    .OrderBy(x => x)
+                    .ToList();
+
+                if (distances.Count < 2)
+                {
+                    continue;
+                }
+
+                for (int i = 0; i < distances.Count - 1; i++)
+                {
+                    for (int j = i + 1; j < distances.Count; j++)
+                    {
+                        int saved = distances[j] - (distances[i] + 2);
+
+                        if (saved <= 0)
+                        {
+                            continue;
+                        }
+
+                        if (saved >= 100)
+                        {
+                            count += 1;
+                        }
+                    }
+                }
+            }
+
+            return count;
+        }
+
+        private void PopulatePaths()
+        {
+            Tile start = _tiles[_startPos.x, _startPos.y];
+            start.Distance = 0;
+            List<Tile> queue = [start];
+
+            while (queue.Count > 0)
+            {
+                Tile tile = queue[0];
+                queue.RemoveAt(0);
+
+                foreach (Tile neighbor in GetNeighbors(tile))
+                {
+                    if (neighbor.Type == TileType.Empty && neighbor.Distance == int.MaxValue)
+                    {
+                        neighbor.Distance = tile.Distance + 1;
+                        queue.Add(neighbor);
+                    }
+                }
+            }
+        }
+
+        private IEnumerable<Tile> GetNeighbors(Tile tile)
+        {
+            if (tile.X > 0)
+            {
+                yield return _tiles[tile.X - 1, tile.Y];
+            }
+
+            if (tile.X < _width - 1)
+            {
+                yield return _tiles[tile.X + 1, tile.Y];
+            }
+
+            if (tile.Y > 0)
+            {
+                yield return _tiles[tile.X, tile.Y - 1];
+            }
+
+            if (tile.Y < _height - 1)
+            {
+                yield return _tiles[tile.X, tile.Y + 1];
+            }
         }
 
         private void ValidatePathfinding()
