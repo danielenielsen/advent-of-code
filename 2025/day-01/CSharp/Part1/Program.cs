@@ -20,20 +20,17 @@ internal class Program
         foreach (Instruction instruction in instructions)
         {
             int stepChange = instruction.Direction == Direction.Left ? -1 : 1;
-
-            for (int i = 0; i < instruction.Steps; i++)
+            int change = stepChange * instruction.Steps;
+            currentPosition += change;
+            
+            while (currentPosition > 99)
             {
-                currentPosition += stepChange;
+                currentPosition -= 100;
+            }
 
-                if (currentPosition < 0)
-                {
-                    currentPosition = 99;
-                }
-
-                if (currentPosition > 99)
-                {
-                    currentPosition = 0;
-                }
+            while (currentPosition < 0)
+            {
+                currentPosition += 100;
             }
 
             if (currentPosition == 0)
