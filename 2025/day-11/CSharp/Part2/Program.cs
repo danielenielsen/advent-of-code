@@ -14,6 +14,13 @@ internal static class Program
 
     private static long Solve(IEnumerable<Row> rows)
     {
+        return CountPathsBetweenNodes(rows, "svr", "fft")
+               * CountPathsBetweenNodes(rows, "fft", "dac")
+               * CountPathsBetweenNodes(rows, "dac", "out");
+    }
+
+    private static long CountPathsBetweenNodes(IEnumerable<Row> rows, string start, string end)
+    {
         List<string> keys = new List<string>();
         foreach (Row row in rows)
         {
@@ -36,11 +43,11 @@ internal static class Program
         
         Dictionary<Node, int> nodeDepth = nodes.Values.ToDictionary(n => n, _ => int.MinValue);
         
-        Node outNode = nodes["out"];
-        nodeDepth[outNode] = 0;
+        Node endNode = nodes[end];
+        nodeDepth[endNode] = 0;
         
         Queue<Node> depthQueue = new Queue<Node>();
-        depthQueue.Enqueue(outNode);
+        depthQueue.Enqueue(endNode);
 
         while (depthQueue.Count > 0)
         {
@@ -57,20 +64,15 @@ internal static class Program
                 }
             }
         }
-
-        if (nodeDepth.Any(x => x.Value == int.MinValue))
-        {
-            throw new Exception("Node with unknown depth found.");
-        }
         
-        Dictionary<Node, long> routesToOut = nodes.Values.ToDictionary(n => n, _ => 0L);
-        routesToOut[outNode] = 1;
+        Dictionary<Node, long> routesToEnd = nodes.Values.ToDictionary(n => n, _ => 0L);
+        routesToEnd[endNode] = 1;
         
         Dictionary<Node, bool> nodeVisited = nodes.Values.ToDictionary(n => n, _ => false);
         
         
         PriorityQueue<Node, int> priorityQueue = new PriorityQueue<Node, int>();
-        priorityQueue.Enqueue(outNode, 0);
+        priorityQueue.Enqueue(endNode, 0);
 
         while (priorityQueue.Count > 0)
         {
@@ -78,7 +80,7 @@ internal static class Program
 
             foreach (Node connection in node.ConnectionsFrom)
             {
-                routesToOut[connection] += routesToOut[node];
+                routesToEnd[connection] += routesToEnd[node];
 
                 if (!nodeVisited[connection])
                 {
@@ -88,8 +90,8 @@ internal static class Program
             }
         }
         
-        Node inNode = nodes["svr"];
-        long res = routesToOut[inNode];
+        Node startNode = nodes[start];
+        long res = routesToEnd[startNode];
         
         return res;
     }
